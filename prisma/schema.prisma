@@ -1,119 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // provider  = "mysql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-model cart {
-  id            Int             @id @default(autoincrement())
-  cartTotal     Float
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  orderedById   Int
-  user          user            @relation(fields: [orderedById], references: [id], map: "Cart_orderedById_fkey")
-  productoncart productoncart[]
-
-  @@index([orderedById], map: "Cart_orderedById_fkey")
-}
-
-model category {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime
-  product   product[]
-}
-
-model image {
-  id         Int      @id @default(autoincrement())
-  asset_id   String
-  public_id  String
-  url        String
-  secure_url String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime
-  productId  Int
-  product    product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Image_productId_fkey")
-
-  @@index([productId], map: "Image_productId_fkey")
-}
-
-model order {
-  id              Int              @id @default(autoincrement())
-  cartTotal       Float
-  orderStatus     String           @default("Not Process")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime
-  orderedById     Int
-  stripePaymentId String?
-  amount          Int?
-  status          String?
-  currentcy       String?
-  user            user             @relation(fields: [orderedById], references: [id], map: "Order_orderedById_fkey")
-  productonorder  productonorder[]
-
-  @@index([orderedById], map: "Order_orderedById_fkey")
-}
-
-model product {
-  id             Int              @id @default(autoincrement())
-  title          String
-  description    String
-  price          Float
-  sold           Int              @default(0)
-  quantity       Int
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  categoryId     Int?
-  image          image[]
-  category       category?        @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
-  productoncart  productoncart[]
-  productonorder productonorder[]
-
-  @@index([categoryId], map: "Product_categoryId_fkey")
-}
-
-model productoncart {
-  id        Int     @id @default(autoincrement())
-  cartId    Int
-  productId Int
-  count     Int
-  price     Float
-  cart      cart    @relation(fields: [cartId], references: [id], onDelete: Cascade, map: "ProductOnCart_cartId_fkey")
-  product   product @relation(fields: [productId], references: [id], map: "ProductOnCart_productId_fkey")
-
-  @@index([cartId], map: "ProductOnCart_cartId_fkey")
-  @@index([productId], map: "ProductOnCart_productId_fkey")
-}
-
-model productonorder {
-  id        Int     @id @default(autoincrement())
-  productId Int
-  orderId   Int
-  count     Int
-  price     Float
-  order     order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "ProductOnOrder_orderId_fkey")
-  product   product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductOnOrder_productId_fkey")
-
-  @@index([orderId], map: "ProductOnOrder_orderId_fkey")
-  @@index([productId], map: "ProductOnOrder_productId_fkey")
-}
-
-model user {
+model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique(map: "User_email_key")
+  email     String   @unique
   password  String?
   name      String?
   picture   String?
   role      String   @default("user")
   enabled   Boolean  @default(true)
   address   String?
+  orders    Order[]
+  carts     Cart[]
   createdAt DateTime @default(now())
-  updatedAt DateTime
-  cart      cart[]
-  order     order[]
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String
+  price       Float
+  sold        Int              @default(0)
+  quantity    Int
+  orderItems  ProductOnOrder[]
+  cartItems   ProductOnCart[]
+  images      Image[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+}
+
+model Order {
+  id              Int              @id @default(autoincrement())
+  products        ProductOnOrder[]
+  cartTotal       Float
+  orderStatus     String           @default("Not Process")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  orderedBy       User             @relation(fields: [orderedById], references: [id])
+  orderedById     Int
+  stripePaymentId String
+  amount          Int
+  status          String
+  currentcy       String
+}
+
+model ProductOnOrder {
+  id        Int     @id @default(autoincrement())
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   Int
+  count     Int
+  price     Float
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Cart {
+  id          Int             @id @default(autoincrement())
+  products    ProductOnCart[]
+  cartTotal   Float
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  orderedBy   User            @relation(fields: [orderedById], references: [id])
+  orderedById Int
+}
+
+model ProductOnCart {
+  id        Int     @id @default(autoincrement())
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId    Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  count     Int
+  price     Float
+}
+
+model Image {
+  id         Int      @id @default(autoincrement())
+  asset_id   String
+  public_id  String
+  url        String
+  secure_url String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  Int
 }
