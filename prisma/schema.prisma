@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model cart {
+  id            Int             @id @default(autoincrement())
+  cartTotal     Float
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  orderedById   Int
+  user          user            @relation(fields: [orderedById], references: [id], map: "Cart_orderedById_fkey")
+  productoncart productoncart[]
+
+  @@index([orderedById], map: "Cart_orderedById_fkey")
+}
+
+model category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  product   product[]
+}
+
+model image {
+  id         Int      @id @default(autoincrement())
+  asset_id   String
+  public_id  String
+  url        String
+  secure_url String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  productId  Int
+  product    product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Image_productId_fkey")
+
+  @@index([productId], map: "Image_productId_fkey")
+}
+
+model order {
+  id              Int              @id @default(autoincrement())
+  cartTotal       Float
+  orderStatus     String           @default("Not Process")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  orderedById     Int
+  stripePaymentId String?
+  amount          Int?
+  status          String?
+  currentcy       String?
+  user            user             @relation(fields: [orderedById], references: [id], map: "Order_orderedById_fkey")
+  productonorder  productonorder[]
+
+  @@index([orderedById], map: "Order_orderedById_fkey")
+}
+
+model product {
+  id             Int              @id @default(autoincrement())
+  title          String
+  description    String
+  price          Float
+  sold           Int              @default(0)
+  quantity       Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  categoryId     Int?
+  image          image[]
+  category       category?        @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
+  productoncart  productoncart[]
+  productonorder productonorder[]
+
+  @@index([categoryId], map: "Product_categoryId_fkey")
+}
+
+model productoncart {
+  id        Int     @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  count     Int
+  price     Float
+  cart      cart    @relation(fields: [cartId], references: [id], onDelete: Cascade, map: "ProductOnCart_cartId_fkey")
+  product   product @relation(fields: [productId], references: [id], map: "ProductOnCart_productId_fkey")
+
+  @@index([cartId], map: "ProductOnCart_cartId_fkey")
+  @@index([productId], map: "ProductOnCart_productId_fkey")
+}
+
+model productonorder {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  orderId   Int
+  count     Int
+  price     Float
+  order     order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "ProductOnOrder_orderId_fkey")
+  product   product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductOnOrder_productId_fkey")
+
+  @@index([orderId], map: "ProductOnOrder_orderId_fkey")
+  @@index([productId], map: "ProductOnOrder_productId_fkey")
+}
+
+model user {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique(map: "User_email_key")
+  password  String?
+  name      String?
+  picture   String?
+  role      String   @default("user")
+  enabled   Boolean  @default(true)
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  cart      cart[]
+  order     order[]
+}
